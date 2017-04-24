@@ -1,0 +1,6 @@
+.python_venv
+.vscode
+src
+img
+results.txt
+*.pyc

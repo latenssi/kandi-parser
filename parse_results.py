@@ -16,7 +16,8 @@ from collections import namedtuple
 Plot = namedtuple('Plot', ['id', 'label', 'y_factor'])
 
 plots = [
-    Plot('avg', u'Keskimääräinen viive (ms)', 1000),
+    Plot('mean', u'Keskimääräinen viive (ms)', 1000),
+    Plot('median', u'Mediaani viive (ms)', 1000),
     Plot('max', u'Suurin viive (ms)', 1000),
     Plot('min', u'Pienin viive (ms)', 1000),
     Plot('rps', u'Vastausta sekunissa', 1),

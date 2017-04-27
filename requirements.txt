@@ -1,4 +1,5 @@
 numpy
 pandas
 matplotlib
--e git://github.com/latenssi/boom.git#egg=boom
+gevent==1.1.2
+requests>=2.3.0

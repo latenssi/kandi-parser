@@ -40,10 +40,15 @@ class RunResults(object):
     of the run.
     """
 
-    def __init__(self, num=1):
-        self.status_code_counter = defaultdict(list)
+    def __init__(self, num=1, url=None):
+        # self.status_code_counter = defaultdict(list)
+        self.all_res = []
         self.errors = []
         self.total_time = None
+
+        if url:
+            server_info = requests.head(url).headers.get('server', 'Unknown')
+            self.server = re.sub(r"\s\(.*\)", "", server_info)
 
 
 def calc_stats(results, url, number, concurrency):
@@ -51,14 +56,9 @@ def calc_stats(results, url, number, concurrency):
 
        The statistics are returned as a RunStats object.
     """
-    server_info = requests.head(url).headers.get('server', 'Unknown')
-    server_info = re.sub(r"\s\(.*\)", "", server_info)
 
-    all_res = []
-    count = 0
-    for values in results.status_code_counter.values():
-        all_res += values
-        count += len(values)
+    all_res = results.all_res
+    count = len(all_res)
 
     amax = np.amax(all_res)
     amin = np.amin(all_res)
@@ -68,7 +68,7 @@ def calc_stats(results, url, number, concurrency):
         "mean": np.mean(all_res),
         "min": amin,
         "max": amax,
-        "amp": amax - amin,
+        "amp": float(amax - amin),
         "median": np.median(all_res),
         "stdev": np.std(all_res),
         "perc_95": np.percentile(all_res, 95),
@@ -78,7 +78,7 @@ def calc_stats(results, url, number, concurrency):
         "count": count,
         "number": number,
         "concurrency": concurrency,
-        "server_info": server_info,
+        "server": results.server,
     }
 
 def print_errors(errors):
@@ -111,7 +111,8 @@ def onecall(method, url, results, **options):
         results.errors.append(exc)
     else:
         duration = time.time() - start
-        results.status_code_counter[res.status_code].append(duration)
+        results.all_res.append(duration)
+        # results.status_code_counter[res.status_code].append(duration)
 
 
 def run(url, num=1, duration=None, concurrency=1, headers=None):
@@ -128,7 +129,7 @@ def run(url, num=1, duration=None, concurrency=1, headers=None):
     pool = Pool(concurrency)
     start = time.time()
     jobs = None
-    res = RunResults(num)
+    res = RunResults(num, url)
 
     try:
         if num is not None:

@@ -1,0 +1,5 @@
+[
+    { "server": "Apache/2.4.18", "cpu": 73.6, "mem": 4.2 },
+    { "server": "lighttpd/1.4.35", "cpu": 7.0, "mem": 0.7 },
+    { "server": "nginx/1.10.0", "cpu": 6.6, "mem": 1.2 }
+]

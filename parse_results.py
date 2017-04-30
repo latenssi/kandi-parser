@@ -71,7 +71,7 @@ def plot_stats(data, fig_path, title=None):
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    swarm = sns.barplot(
+    bar = sns.barplot(
         x="server",
         y="rps",
         hue="concurrency",
@@ -106,12 +106,46 @@ def plot_durations(data, fig_path, title=None):
 
     fig.savefig(fig_path)
 
+def plot_usage(data, fig_path):
+    fig = plt.figure()
 
-stats4k, durations4k = run_stats('4k')
-stats72k, durations72k = run_stats('72k')
+    ax1 = fig.add_subplot(121)
+    bar1 = sns.barplot(
+        x="server",
+        y="cpu",
+        data=data
+    )
 
-plot_stats(stats4k, 'run_4k_stats.png')
-plot_stats(stats72k, 'run_72k_stats.png')
+    for item in bar1.get_xticklabels():
+        item.set_rotation(20)
 
-plot_durations(durations4k, 'run_4k_durations.png')
-plot_durations(durations72k, 'run_72k_durations.png')
+    ax1.set_xlabel('Palvelinohjelman  nimi')
+    ax1.set_ylabel(u'Prosessorin käyttö (%)')
+
+    ax2 = fig.add_subplot(122)
+
+    bar2 = sns.barplot(
+        x="server",
+        y="mem",
+        data=data
+    )
+
+    for item in bar2.get_xticklabels():
+        item.set_rotation(20)
+
+    ax2.set_xlabel('Palvelinohjelman  nimi')
+    ax2.set_ylabel(u'Muistin käyttö (%)')
+
+    fig.savefig(fig_path)
+
+# stats4k, durations4k = run_stats('4k')
+# stats72k, durations72k = run_stats('72k')
+
+# plot_stats(stats4k, 'run_4k_stats.png')
+# plot_stats(stats72k, 'run_72k_stats.png')
+
+# plot_durations(durations4k, 'run_4k_durations.png')
+# plot_durations(durations72k, 'run_72k_durations.png')
+
+# usage_data = pd.read_json('cpu_mem.json')
+# plot_usage(usage_data, 'run_72k_usage.png')

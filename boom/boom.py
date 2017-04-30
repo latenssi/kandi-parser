@@ -51,7 +51,7 @@ class RunResults(object):
             self.server = re.sub(r"\s\(.*\)", "", server_info)
 
 
-def calc_stats(results, url, number, concurrency):
+def calc_stats(results, number, concurrency):
     """Calculate stats (min, max, avg) from the given RunResults.
 
        The statistics are returned as a RunStats object.
@@ -90,10 +90,10 @@ def print_errors(errors):
         print(error)
 
 
-def print_json(results, url, number, concurrency):
+def print_json(results, number, concurrency):
     """Prints a JSON representation of the results to stdout."""
     import json
-    stats = calc_stats(results, url, number, concurrency)
+    stats = calc_stats(results, number, concurrency)
     print(json.dumps(stats))
 
 
@@ -222,7 +222,7 @@ def main():
         print_errors((e, ))
         sys.exit(1)
 
-    print_json(res, url, args.requests, args.concurrency)
+    print_json(res, args.requests, args.concurrency)
 
     logger.info('Bye!')
 

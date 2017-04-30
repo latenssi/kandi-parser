@@ -8,6 +8,8 @@ import os
 import sys
 import json
 import re
+import time
+import spur
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -18,89 +20,98 @@ from datetime import datetime
 
 from boom import boom
 
-# Plot = namedtuple('Plot', ['id', 'label', 'y_factor'])
+server="palvelin"
+ports = ( 8083, 8081, 8082 )
+concurrencies = (1, 10, 100)
+n = 100
 
-# plots = [
-#     Plot('mean', u'Keskimääräinen viive (ms)', 1000),
-#     Plot('median', u'Mediaani viive (ms)', 1000),
-#     Plot('max', u'Suurin viive (ms)', 1000),
-#     Plot('min', u'Pienin viive (ms)', 1000),
-#     Plot('rps', u'Vastausta sekunissa', 1),
-#     Plot('failed', u'Saapumattomat vastaukset', 1),
-# ]
+shell = spur.SshShell(
+    hostname=server,
+    username="tester",
+    password="qwertyuiop",
+    missing_host_key=spur.ssh.MissingHostKey.accept,
+)
 
-# x_label = u'Samanaikaisten kyselyiden määrä'
-# label_fontsize = 12
-
-def get_stats():
-    server="palvelin"
-    # ports = (8081, 8082, 8083)
-    ports = (8081, 8082, 8083)
-    concurrencies = (1,)
-    request_nums = (10,)
-
-    results = {}
+def run_stats(filesize):
     stats = []
+    duration_stats = []
+
     for p in ports:
-        for c in concurrencies:
-            for n in request_nums:
-                result = boom.run("http://{0}:{1}".format(server, p), n, None, c)
-                # stats.append(boom.calc_stats(result, "http://{0}:{1}".format(server, p), n, c))
-                stats.append({
-                    'server': result.server,
-                    'durations': result.all_res,
-                    'rps': len(result.all_res) / float(result.total_time),
-                    'concurrency': c,
-                    'number': n
-                })
+        # raw_input("Going to bench port {0}. Press Enter to continue...".format(p))
+        try:
+            print("Benching port {0}...".format(p))
+            logger = shell.spawn(["/home/tester/{0}.sh".format(p), filesize],  store_pid=True)
 
-    df = pd.DataFrame(stats)
-    df = df.apply(pd.to_numeric, errors='ignore')
-    return df
+            time.sleep(5)
 
-stats = get_stats()
-print stats
+            for c in concurrencies:
+                result = boom.run("http://{0}:{1}/{2}.html".format(server, p, filesize), n, None, c)
+                stats.append(boom.calc_stats(result, n, c))
+                duration_stats += [
+                    {
+                        'server': result.server,
+                        'duration': d,
+                        'concurrency': c,
+                    }
+                    for d in result.all_res
+                ]
 
-# Täytyy muuntaa niin, että yksi duraatio ja yksi serveri per rivi
-plot = sns.stripplot(x="server", y="durations", data=stats)
-fig = plot.get_figure()
-fig.savefig("test.png")
+            time.sleep(1)
 
-# print(type(stats.iloc[0]['amp']))
+        finally:
+            logger.send_signal(9)
 
-# print(stats)
+    print("Done benching.")
 
-# with open(sys.argv[1], "r") as f:
-#     results = f.readlines()
+    df1 = pd.DataFrame(stats)
+    df2 = pd.DataFrame(duration_stats)
+    return df1, df2
 
-# results = pd.read_json(sys.argv[1])
-# print(results)
+def plot_stats(data, fig_path, title=None):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
 
-# results = map(str.strip, results)
-# results = map(json.loads, results)
+    swarm = sns.barplot(
+        x="server",
+        y="rps",
+        hue="concurrency",
+        data=data,
+    )
 
-# x = sorted(set([r['concurrency'] for r in results]))
-# servers = sorted(set([r['server'] for r in results]))
+    ax.set_xlabel('Palvelinohjelman  nimi')
+    ax.set_ylabel('Vastausta sekunissa')
 
-# path = "img/{0}".format(datetime.now().strftime("%Y-%m-%d_%H%M"))
-# os.makedirs(path)
+    if title:
+        ax.set_title(title)
 
-# plt.bar([1, 1, 1], [2, 2 , 2], .02, [1, 0, 1])
-# plt.savefig("test.png")
-# plt.close()
+    fig.savefig(fig_path)
 
-# for p in plots:
-#     legend = []
-#     plt.ylabel(p.label, fontsize=label_fontsize)
-#     plt.xlabel(x_label, fontsize=label_fontsize)
+def plot_durations(data, fig_path, title=None):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
 
-#     for s in servers:
-#         server_results = sorted(filter(lambda r: r['server'] == s, results), key=lambda r: r['concurrency'])
-#         y = [r[p.id] * p.y_factor for r in server_results]
-#         # plt.plot(x, y)
-#         plt.semilogx(x, y)
-#         legend.append(s)
+    swarm = sns.swarmplot(
+        x="server",
+        y="duration",
+        hue="concurrency",
+        data=data,
+        size=4,
+    )
 
-#     plt.legend(legend, loc='best')
-#     plt.savefig("{0}/{1}.png".format(path, p.id))
-#     plt.close()
+    ax.set_xlabel('Palvelinohjelman  nimi')
+    ax.set_ylabel('Vastausaika (s)')
+
+    if title:
+        ax.set_title(title)
+
+    fig.savefig(fig_path)
+
+
+stats4k, durations4k = run_stats('4k')
+stats72k, durations72k = run_stats('72k')
+
+plot_stats(stats4k, 'run_4k_stats.png')
+plot_stats(stats72k, 'run_72k_stats.png')
+
+plot_durations(durations4k, 'run_4k_durations.png')
+plot_durations(durations72k, 'run_72k_durations.png')
